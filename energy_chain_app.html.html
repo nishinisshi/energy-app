@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>エネルギー変換連鎖 チャレンジ</title>
+    <!-- Tailwind CSSを読み込み --><script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2 {
+            font-weight: 600; /* semibold */
+        }
+        /* エフェクトがカードからはみ出ても見えるように */
+        .energy-card {
+            overflow: visible; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <!-- メインコンテナ --><div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg w-full max-w-2xl">
+
+        <!-- ヘッダー --><div class="text-center mb-6">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">エネルギー変換チャレンジ</h1>
+            <p class="text-gray-600 mt-2">エネルギーの移り変わりを考えよう！</p>
+        </div>
+
+        <div id="quiz-area" class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg mb-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-700 mb-2">お題 <span id="question-number" class="text-blue-600">1問目</span></h2>
+            <p id="question-text" class="text-base text-gray-800">
+                （ここに問題文が入ります）
+            </p>
+        </div>
+
+        <div id="card-options-area" class="mb-4">
+            <h2 class="text-lg font-semibold text-gray-700 mb-3">1. エネルギーカードを選ぶ</h2>
+            <div id="card-options" class="flex flex-wrap justify-start -m-2">
+                <!-- JavaScriptでカードが生成されます --></div>
+        </div>
+
+        <div id="answer-area" class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-3">2. あなたの答え（クリックで削除）</h2>
+            <div id="answer-container" class="bg-gray-50 border border-gray-300 rounded-lg p-4 min-h-[8rem] flex flex-wrap items-center">
+                <span class="text-gray-400">ここにカードが並ぶよ</span>
+            </div>
+        </div>
+
+        <div id="button-bar" class="flex flex-col sm:flex-row gap-3">
+            <button id="check-answer" class="w-full sm:w-1/2 bg-green-500 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-green-600 transition-all duration-200">
+                これでどう？
+            </button>
+            <button id="reset-answer" class="w-full sm:w-1/4 bg-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-gray-600 transition-all duration-200">
+                やりなおし
+            </button>
+            <button id="next-question" class="w-full sm:w-1/4 bg-blue-500 text-white font-bold py-3 px-4 rounded-lg shadow hover:bg-blue-600 transition-all duration-200" style="display: none;">
+                次の問題へ
+            </button>
+        </div>
+
+        <!-- 4. フィードバックエリア (クリア画面にもなる) --><div id="feedback-area" class="mt-4 p-3 rounded-lg text-center font-medium" style="display: none;">
+            <!-- JavaScriptで内容が設定されます --></div>
+
+        <!-- 5. 解説エリア --><div id="explanation-area" class="mt-4 p-4 bg-yellow-50 border-yellow-300 rounded-lg" style="display: none;">
+            <h3 class="font-semibold text-yellow-800">先輩からの解説</h3> <p id="explanation-text" class="text-yellow-700"></p>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- クイズデータ (通常) ---
+            const quizzes = [
+                {
+                    question: "ご飯を食べて「人が走る」ときの、主なエネルギー変換は？",
+                    answer: ["化学", "運動"],
+                    hint: "ヒント： ご飯（栄養）のエネルギーが、体を動かすエネルギーに変わるよ。（変換1回）",
+                    explanation: "ご飯とかの栄養は、体の中においとける「化学」エネルギーや。走るとき、筋肉がそいつを「運動」エネルギーに変えて動いとるんよ。人間もエネルギー変換しとるんやな！"
+                },
+                {
+                    question: "植物が育つ「光合成」のエネルギー変換は？",
+                    answer: ["光", "化学"],
+                    hint: "ヒント： 太陽のエネルギーを、植物が蓄えるエネルギーに変えるよ。（変換1回）",
+                    explanation: "太陽の「光」エネルギーを使って、植物がデンプンっていう「化学」エネルギーを作るんよ。自分のメシを自分で作る感じやな！"
+                },
+                {
+                    question: "お湯をわかす「電気ケトル」のエネルギー変換は？",
+                    answer: ["電気", "熱"],
+                    hint: "ヒント： コンセントからのエネルギーが、お湯をグラグラさせるエネルギーに変わるよ。（変換1回）",
+                    explanation: "コンセントから来た「電気」エネルギーが、ケトルの底にあるヒーター（電熱線）を通って「熱」エネルギーに変わるんよ。シンプルやな！"
+                },
+                {
+                    question: "風でまわる「風力発電」のエネルギー変換は？",
+                    answer: ["運動", "電気"],
+                    hint: "ヒント： 風の力で、大きなハネが回って電気ができるよ。（変換1回）",
+                    explanation: "風が吹く力（「運動」）で、あのデカいプロペラが回るやろ。それが発電機を回して「電気」エネルギーを作るんよ。水力発電と似とるな。"
+                },
+                {
+                    question: "「太陽光パネル」で電気ができるときのエネルギー変換は？",
+                    answer: ["光", "電気"],
+                    hint: "ヒント： 太陽のエネルギーが、そのまま電気のエネルギーに変わるよ。（変換1回）",
+                    explanation: "太陽の「光」エネルギーが、パネルに当たると、パネルの中の半導体が「電気」エネルギーを生み出すんよ。光合成とはまた違う仕組みで電気を作るん、すごいよな。"
+                },
+                {
+                    question: "乾電池で動く「懐中電灯」が光るまでのエネルギー変換は？",
+                    answer: ["化学", "電気", "光"],
+                    hint: "ヒント： 電池の中のエネルギーが、電線を通って、ピカッと光るよ。（変換2回）",
+                    explanation: "まず電池の中にある「化学」エネルギーが、スイッチオンで「電気」に変わる。で、その電気が電球に行って「光」になるんよ。ちょっと熱くもなるけどな。"
+                },
+                {
+                    question: "ダムで発電する「水力発電」のエネルギー変換は？",
+                    answer: ["位置", "運動", "電気"],
+                    hint: "ヒント： 高いところにある水が、タービンを回して、電気ができるよ。（変換2回）",
+                    explanation: "ダムの高いとこにある水は「位置」エネルギーを持っとる。それが落ちる時に「運動」エネルギーになって、水車（タービン）をグルグル回して、最後は発電機で「電気」になるんやな。"
+                },
+                {
+                    question: "自転車の「ダイナモライト」が点灯するまでのエネルギー変換は？",
+                    answer: ["運動", "電気", "光"],
+                    hint: "ヒント： タイヤが回る力が、電気を作って、ライトが光るよ。（変換2回）",
+                    explanation: "自転車をこぐとタイヤが回る、これが「運動」エネルギー。そいつがダイナモ（ちっこい発電機）を回して「電気」を作って、ライトが「光」るわけや。自分の力で光らせるん、ええよな！"
+                },
+                {
+                    question: "「スピーカー」が音を出すまでの主なエネルギー変換は？",
+                    answer: ["電気", "運動", "音"],
+                    hint: "ヒント： 電気の信号が、スピーカーを震わせて（動かして）、音が鳴るよ。（変換2回）",
+                    explanation: "アンプから来た「電気」信号が、スピーカーの中のコイルや磁石を動かして（「運動」）、コーン（紙の部分）を震わせるんよ。その震えが空気に伝わって「音」になるんやな。"
+                },
+                {
+                    question: "「火力発電所」で電気が作られ、家で「スマホを充電」するまでの主なエネルギー変換は？",
+                    answer: ["化学", "熱", "運動", "電気", "化学"],
+                    hint: "ヒント： 燃料を燃やして、タービンを回して、発電して、最後はバッテリーに蓄えるよ。（変換4回）",
+                    explanation: "まず石炭とか天然ガス（「化学」）を燃やす（「熱」）。その熱で蒸気を作ってタービンを回す（「運動」）。で、発電機が「電気」を作る。家に来た電気をスマホのバッテリーに蓄えるのは、また「化学」エネルギーに戻しとるんよ。"
+                }
+            ];
+            
+            // ★ 変更: EXクイズデータ
+            const exQuizzes = [
+                {
+                    question: "「ガソリン車」が走り、同時に「ヘッドライト」が点灯しているときのエネルギー変換は？（エンジン始動後）",
+                    answer: ["化学", "熱", "運動", "電気", "光"],
+                    hint: "ヒント： 燃料（ガソリン）が、エンジンを動かし、さらに発電してライトが光るよ。（変換4回）",
+                    explanation: "ガソリン（化学）→エンジン（熱→運動）で車が走る。その（運動）エネルギーの一部を発電機（オルタネーター）で（電気）に変えて、ライトが（光）るんよ。一石二鳥やな！"
+                },
+                {
+                    question: "「マイク」で拾った音を「スピーカー」で鳴らすときの主なエネルギー変換は？（アンプ含む）",
+                    answer: ["音", "電気", "運動", "音"],
+                    hint: "ヒント： 音が電気信号になり、それがスピーカーを震わせて、また音になるよ。（変換3回）",
+                    explanation: "声（音）がマイクで（電気）信号に変わる。アンプでその電気が強められて、スピーカーを震わせる（運動）。その震えが空気（音）になって聞こえるんよ。通常問題9の応用やな！"
+                },
+                { // ★ 変更: EX3を「原子力発電」に差し替え
+                    question: "「原子力発電所」で発電し、家で「電気ケトル」でお湯を沸かすまでの主な変換は？",
+                    answer: ["化学", "熱", "運動", "電気", "熱"],
+                    hint: "ヒント： ウラン（燃料）が、タービンを回して発電し、家でお湯を沸かすよ。（変換4回）",
+                    explanation: "スタートはウランが持ってるエネルギー（「化学」）や。それを核分裂させて（「熱」）、火力発電と同じように蒸気でタービンを回す（「運動」）。で、発電機が（「電気」）を作って、家でケトルが（「熱」）に変える。火力とスタートが違うだけやな！"
+                }
+            ];
+
+            // --- 利用可能なエネルギータイプ ---
+            const allEnergyTypes = ["電気", "熱", "光", "運動", "化学", "位置", "音"];
+
+            // --- DOM要素の取得 ---
+            const quizArea = document.getElementById('quiz-area');
+            const questionNumber = document.getElementById('question-number');
+            const questionText = document.getElementById('question-text');
+            const cardOptionsArea = document.getElementById('card-options-area');
+            const cardOptions = document.getElementById('card-options');
+            const answerArea = document.getElementById('answer-area');
+            const answerContainer = document.getElementById('answer-container');
+            const buttonBar = document.getElementById('button-bar');
+            const checkBtn = document.getElementById('check-answer');
+            const resetBtn = document.getElementById('reset-answer');
+            const nextBtn = document.getElementById('next-question');
+            const feedbackArea = document.getElementById('feedback-area');
+            const explanationArea = document.getElementById('explanation-area');
+            const explanationText = document.getElementById('explanation-text');
+            
+            document.querySelector('#answer-area h2').textContent = '2. あなたの答え（クリックで削除）';
+
+
+            // --- アプリの状態 ---
+            let currentQuizIndex = 0; // 現在の問題番号 (0からスタート)
+            let userAnswer = [];      // ユーザーの回答（エネルギー名の配列）
+            let isExMode = false;     // EXモードフラグ
+
+            // --- ヘルパー関数 ---
+
+            /**
+             * エネルギータイプ名から対応するTailwindのCSSクラス文字列を返す
+             */
+            function getColorClassForEnergy(type) {
+                switch (type) {
+                    case "電気": return "bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200";
+                    case "熱": return "bg-red-100 border-red-300 text-red-800 hover:bg-red-200";
+                    case "光": return "bg-gray-50 border-gray-300 text-gray-800 hover:bg-gray-100";
+                    case "運動": return "bg-orange-100 border-orange-300 text-orange-800 hover:bg-orange-200";
+                    case "化学": return "bg-green-100 border-green-300 text-green-800 hover:bg-green-200";
+                    case "位置": return "bg-blue-100 border-blue-300 text-blue-800 hover:bg-blue-200";
+                    case "音": return "bg-purple-100 border-purple-300 text-purple-800 hover:bg-purple-200";
+                    default: return "bg-gray-100"; // 万が一
+                }
+            }
+            
+            /**
+             * エネルギータイプに対応する絵文字を返す
+             */
+            function getEmojiForEnergy(type) {
+                switch (type) {
+                    case "電気": return "⚡";
+                    case "熱": return "🔥";
+                    case "光": return "💡";
+                    case "運動": return "🏃";
+                    case "化学": return "🧪";
+                    case "位置": return "⛰️";
+                    case "音": return "🔊";
+                    default: return "";
+                }
+            }
+
+            // --- 関数 ---
+            
+            /**
+             * ターゲット要素にクリックエフェクト（絵文字）を表示する
+             */
+            function showClickEffect(targetElement) {
+                const energyType = targetElement.dataset.energy;
+                if (!energyType) return; 
+
+                const emoji = getEmojiForEnergy(energyType);
+                if (!emoji) return;
+
+                const effectEl = document.createElement('div');
+                effectEl.textContent = emoji;
+                effectEl.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl opacity-100 transition-all duration-500 ease-out z-10';
+                effectEl.style.pointerEvents = 'none'; 
+
+                targetElement.style.position = 'relative';
+                targetElement.appendChild(effectEl);
+
+                requestAnimationFrame(() => {
+                    effectEl.style.transform = 'translate(-50%, -150%)'; 
+                    effectEl.style.opacity = '0';
+                });
+
+                setTimeout(() => {
+                    if (effectEl.parentNode) {
+                        effectEl.parentNode.removeChild(effectEl);
+                    }
+                    targetElement.style.position = ''; 
+                }, 500); 
+            }
+
+
+            /**
+             * 1. 選択肢のエネルギーカードを描画する
+             */
+            function renderEnergyCards() {
+                cardOptions.innerHTML = ''; 
+                allEnergyTypes.forEach(type => {
+                    const card = document.createElement('button');
+                    card.textContent = type;
+                    card.className = `energy-card ${getColorClassForEnergy(type)} w-24 text-center rounded-lg p-4 my-2 mx-3 font-medium shadow-md transition-all duration-200 hover:scale-105 border-2`;
+                    card.dataset.energy = type;
+                    card.addEventListener('click', (event) => handleCardClick(type, event.currentTarget));
+                    cardOptions.appendChild(card);
+                });
+            }
+
+            /**
+             * 2. ユーザーの回答欄を描画する
+             */
+            function renderUserAnswer() {
+                answerContainer.innerHTML = ''; 
+                if (userAnswer.length === 0) {
+                    answerContainer.innerHTML = '<span class="text-gray-400">ここにカードが並ぶよ</span>';
+                    return;
+                }
+                userAnswer.forEach((type, index) => {
+                    const card = document.createElement('div');
+                    card.textContent = type;
+                    card.className = `answer-card ${getColorClassForEnergy(type)} w-24 text-center rounded-lg p-4 m-2 font-medium shadow-sm border-2 cursor-pointer hover:opacity-80 transition-opacity`;
+                    
+                    card.addEventListener('click', () => {
+                        userAnswer.splice(index, 1); // index番目の要素を1つ削除
+                        renderUserAnswer();          // 回答欄を再描画
+                    });
+
+                    if (index < userAnswer.length) {
+                        answerContainer.appendChild(card);
+                        if (index < userAnswer.length - 1) {
+                            const arrow = document.createElement('span');
+                            arrow.className = "text-2xl text-gray-400 mx-1 font-mono";
+                            arrow.textContent = "→";
+                            answerContainer.appendChild(arrow);
+                        }
+                    }
+                });
+            }
+
+            /**
+             * 3. 問題文と番号を更新する
+             */
+            function loadQuiz(index) {
+                // 現在のモード（通常/EX）に合わせてクイズリストを選択
+                const currentQuizList = isExMode ? exQuizzes : quizzes;
+
+                if (index >= currentQuizList.length) {
+                    // --- 全問クリア時の処理 ---
+                    quizArea.style.display = 'none';
+                    cardOptionsArea.style.display = 'none';
+                    answerArea.style.display = 'none';
+                    buttonBar.style.display = 'none';
+                    explanationArea.style.display = 'none';
+                    
+                    let clearHtml = '';
+                    if (isExMode) {
+                        // --- EXクリア画面 ---
+                        clearHtml = `
+                            <div class="text-5xl mb-4">🏆</div>
+                            <div class="text-2xl font-bold text-yellow-800">EXステージクリア！</div>
+                            <p class="text-lg text-yellow-700 mt-2">すごいな！完璧や！</p>
+                            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                                <button id="restart-btn" class="w-full sm:w-1/2 bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow hover:bg-blue-600 transition-all duration-200">
+                                    最初から挑戦する
+                                </button>
+                                <button id="restart-ex-btn" class="w-full sm:w-1/2 bg-orange-500 text-white font-bold py-3 px-6 rounded-lg shadow hover:bg-orange-600 transition-all duration-200">
+                                    EXだけもう一度
+                                </button>
+                            </div>
+                        `;
+                        feedbackArea.className = 'mt-4 p-8 rounded-lg text-center font-medium bg-yellow-100 border-2 border-yellow-300 shadow-lg';
+                    } else {
+                        // --- 通常クリア画面 ---
+                        clearHtml = `
+                            <div class="text-5xl mb-4">🎉</div>
+                            <div class="text-2xl font-bold text-green-800">全問クリア！</div>
+                            <p class="text-lg text-green-700 mt-2">おつかれさま！よく頑張ったな！</p>
+                            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                                <button id="restart-btn" class="w-full sm:w-1/2 bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow hover:bg-blue-600 transition-all duration-200">
+                                    もう一度挑戦する
+                                </button>
+                                <button id="ex-btn" class="w-full sm:w-1/2 bg-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow hover:bg-purple-700 transition-all duration-200">
+                                    EXステージに挑戦
+                                </button>
+                            </div>
+                        `;
+                        feedbackArea.className = 'mt-4 p-8 rounded-lg text-center font-medium bg-green-100 border-2 border-green-300 shadow-lg';
+                    }
+                    
+                    feedbackArea.innerHTML = clearHtml;
+                    feedbackArea.style.display = 'block';
+
+                    // --- ボタンにイベントリスナーを追加 ---
+                    const restartBtn = document.getElementById('restart-btn');
+                    if (restartBtn) {
+                        restartBtn.addEventListener('click', () => {
+                            isExMode = false; // 通常モードに戻す
+                            currentQuizIndex = 0;
+                            loadQuiz(0);
+                        });
+                    }
+
+                    const exBtn = document.getElementById('ex-btn'); // 通常クリア時
+                    if (exBtn) {
+                        exBtn.addEventListener('click', () => {
+                            isExMode = true; // EXモードへ
+                            currentQuizIndex = 0;
+                            loadQuiz(0);
+                        });
+                    }
+                    
+                    const restartExBtn = document.getElementById('restart-ex-btn'); // EXクリア時
+                    if (restartExBtn) {
+                        restartExBtn.addEventListener('click', () => {
+                            isExMode = true; // EXモードのまま
+                            currentQuizIndex = 0;
+                            loadQuiz(0);
+                        });
+                    }
+                    return;
+                }
+
+                // --- 通常の問題読み込み時 ---
+                quizArea.style.display = 'block';
+                cardOptionsArea.style.display = 'block';
+                answerArea.style.display = 'block';
+                buttonBar.style.display = 'flex'; 
+
+                const quiz = currentQuizList[index];
+                questionNumber.textContent = isExMode ? `EX ${index + 1}問目` : `${index + 1}問目`;
+                questionText.textContent = quiz.question;
+                
+                userAnswer = [];
+                renderUserAnswer();
+                feedbackArea.style.display = 'none';
+                explanationArea.style.display = 'none';
+
+                checkBtn.style.display = 'block';
+                resetBtn.style.display = 'block';
+                nextBtn.style.display = 'none';
+                
+                checkBtn.disabled = false;
+                resetBtn.disabled = false;
+            }
+
+            /**
+             * 4. [イベント] エネルギーカードがクリックされた時
+             */
+            function handleCardClick(energyType, clickedCardElement) {
+                userAnswer.push(energyType);
+                renderUserAnswer(); 
+
+                if (clickedCardElement) {
+                    showClickEffect(clickedCardElement);
+                }
+            }
+
+            /**
+             * 5. [イベント] 「これでどう？」ボタンが押された時
+             */
+            function checkAnswer() {
+                const currentQuizList = isExMode ? exQuizzes : quizzes;
+                const quiz = currentQuizList[currentQuizIndex];
+                const correctAnswer = quiz.answer;
+
+                if (JSON.stringify(userAnswer) === JSON.stringify(correctAnswer)) {
+                    // 正解
+                    feedbackArea.textContent = '正解！すごい！';
+                    feedbackArea.className = 'mt-4 p-3 rounded-lg text-center font-medium bg-green-100 text-green-700';
+                    explanationText.textContent = quiz.explanation;
+                    explanationArea.style.display = 'block';
+                    
+                    checkBtn.style.display = 'none';
+                    resetBtn.style.display = 'none';
+                    nextBtn.style.display = 'block';
+                } else {
+                    // 不正解
+                    feedbackArea.textContent = `おしい！ ${quiz.hint}`;
+                    feedbackArea.className = 'mt-4 p-3 rounded-lg text-center font-medium bg-red-100 text-red-700';
+                }
+                feedbackArea.style.display = 'block';
+            }
+
+            /**
+             * 6. [イベント] 「やりなおし」ボタンが押された時
+             */
+            function resetAnswer() {
+                userAnswer = [];
+                renderUserAnswer();
+                feedbackArea.style.display = 'none';
+                explanationArea.style.display = 'none';
+            }
+
+            /**
+             * 7. [イベント] 「次の問題へ」ボタンが押された時
+             */
+            function nextQuestion() {
+                currentQuizIndex++;
+                loadQuiz(currentQuizIndex); // loadQuizがよしなにやってくれる
+            }
+
+// --- イベントリスナーの登録 ---
+            checkBtn.addEventListener('click', checkAnswer);
+            resetBtn.addEventListener('click', resetAnswer);
+            nextBtn.addEventListener('click', nextQuestion);
+
+            // --- アプリ初期化 ---
+            renderEnergyCards();
+            loadQuiz(currentQuizIndex);
+        });
+    </script>
+</body>
+</html>
